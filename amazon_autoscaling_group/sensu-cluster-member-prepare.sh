@@ -11,9 +11,7 @@
 
 CLUSTER_TAG=${1:-sensu-cluster}
 CLUSTER_NAME=${2:-test-cluster}
-if [ -n "$3" ]; then
-  ENABLE_CLEANUP="true"
-fi
+ENABLE_CLEANUP="true"
 ETCD_PEER_PORT=2380
 ETCD_CLIENT_PORT=2379
 ETCD_PROTOCOL="http"
@@ -62,7 +60,7 @@ active_etcd_cluster_ids=()
 for id in ${CLUSTER_IDS[@]}
 do
 	priv_ip=$(aws ec2 describe-instances --instance-id $id --filter --filter "Name=network-interface.subnet-id,Values=$CURRENT_SUBNET_ID" --query 'Reservations[0].Instances[0].NetworkInterfaces[0].{"PrivateIpAddress":PrivateIpAddress}' --region $CURRENT_REGION | jq .PrivateIpAddress | tr -d '"')
-        if [ -z "$priv_ip" ]; then
+        if [ -z "$priv_ip" ] || [ "priv_ip" == "null" ] ; then
 		echo "Instance: $id not in subnet: $CURRENT_SUBNET_ID"
 		continue
 	fi
@@ -133,7 +131,8 @@ else
 	members_json=$(curl -s -m 10 $members_endpoint)
 	etcd_members=($(echo $members_json | jq -c .members[] ))
 
-	# Clean up inactive etcd members
+      
+
 	active_etcd_members=()
 	inactive_etcd_members=()
 	for member in ${etcd_members[@]}
@@ -150,17 +149,27 @@ else
 		active_etcd_members+=($member)
 	done
 
+	member_endpoint="${ETCD_PROTOCOL}://${etcd_cluster_ip}:${ETCD_CLIENT_PORT}/v2/members"
+	# Clean up inactive etcd members
 	for member in ${inactive_etcd_members[@]}
 	do
 		echo "Deleting inactive etcd member: $member"
 		id=$(echo $member | jq .id | tr -d '"')
-		curl_command="curl -s ${ETCD_PROTOCOL}://${etcd_cluster_ip}:${ETCD_CLIENT_PORT}/v2/members/$id -XDELETE"
+		curl_delete_command="curl -s ${member_endpoint}/$id -XDELETE"
 		if [ -n "$ENABLE_CLEANUP" ]; then
-			echo "cleaning up with $curl_command"
+			echo "cleaning up with $curl_delete_command"
+			eval $curl_delete_command
         	else
-			echo -e "automatic cleanup not enabled for inactive etcd member: $id\n  remove manually with: ${curl_command}"
+			echo -e "automatic cleanup not enabled for inactive etcd member: $id\n  remove manually with: ${curl_delete_command}"
 		fi
 	done
+        
+        # Add member
+	peerURLs="${ETCD_PROTOCOL}://${CURRENT_PRIVATE_IP}:${ETCD_PEER_PORT}"
+        curl_add_command="curl -s ${member_endpoint} -XPOST -H \"Content-Type: application/json\" -d '{\"peerURLs\":[\"${peerURLs}\"]}'"
+	echo "Adding cluster member: $curl_add_command"
+	eval $curl_add_command
+
 fi
 # Prepare Cache and Data directories 
 mkdir -p $CACHE_DIR
@@ -187,7 +196,7 @@ for id in ${CLUSTER_IDS[@]}
 do
 	query=$(aws ec2 describe-instances --instance-id $id --filter --filter "Name=network-interface.subnet-id,Values=$CURRENT_SUBNET_ID" --query 'Reservations[0].Instances[0].NetworkInterfaces[0].{"PrivateIpAddress":PrivateIpAddress}' --region $CURRENT_REGION) 
 	priv_ip=$(echo $query| jq .PrivateIpAddress | tr -d '"')
-        if [ -z "$priv_ip" ]; then
+        if [ -z "$priv_ip" ] || [ "priv_ip" == "null" ] ; then
 		echo "Instance: $id not in subnet: $CURRENT_SUBNET_ID"
 		continue
 	fi
