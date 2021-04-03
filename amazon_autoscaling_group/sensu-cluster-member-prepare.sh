@@ -60,7 +60,7 @@ active_etcd_cluster_ids=()
 for id in ${CLUSTER_IDS[@]}
 do
 	priv_ip=$(aws ec2 describe-instances --instance-id $id --filter --filter "Name=network-interface.subnet-id,Values=$CURRENT_SUBNET_ID" --query 'Reservations[0].Instances[0].NetworkInterfaces[0].{"PrivateIpAddress":PrivateIpAddress}' --region $CURRENT_REGION | jq .PrivateIpAddress | tr -d '"')
-        if [ -z "$priv_ip" ] || [ "priv_ip" == "null" ] ; then
+        if [ -z "$priv_ip" ] || [ "$priv_ip" == "null" ] ; then
 		echo "Instance: $id not in subnet: $CURRENT_SUBNET_ID"
 		continue
 	fi
@@ -196,7 +196,7 @@ for id in ${CLUSTER_IDS[@]}
 do
 	query=$(aws ec2 describe-instances --instance-id $id --filter --filter "Name=network-interface.subnet-id,Values=$CURRENT_SUBNET_ID" --query 'Reservations[0].Instances[0].NetworkInterfaces[0].{"PrivateIpAddress":PrivateIpAddress}' --region $CURRENT_REGION) 
 	priv_ip=$(echo $query| jq .PrivateIpAddress | tr -d '"')
-        if [ -z "$priv_ip" ] || [ "priv_ip" == "null" ] ; then
+        if [ -z "$priv_ip" ] || [ "$priv_ip" == "null" ] ; then
 		echo "Instance: $id not in subnet: $CURRENT_SUBNET_ID"
 		continue
 	fi
