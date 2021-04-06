@@ -1,0 +1,17 @@
+[Unit]
+Description=Test One Shot
+After=network.target
+
+[Service]
+Type=oneshot
+User=sensu
+ExecStartPre=/usr/local/bin/sensu-cluster-member-prepare.sh
+EnvironmentFile=-/tmp/autoscale-sensu-cluster-env
+ExecStart=/usr/local/bin/test.sh
+RemainAfterExit=true
+#ExecStop=/opt/foo/teardown-foo.sh
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,4 +1,4 @@
-# Autoscaling cluster member into a Sensu cluster using Amazon EC2 auto scaling groups
+# Autoscaling Sensu backend with embedded etcd cluster member into a Sensu cluster using Amazon EC2 auto scaling groups
 
 
 ## Tested EC2 Scenario:
